@@ -9,9 +9,9 @@ use Symfony\Component\Routing\RouteCollection;
 
 require '../vendor/autoload.php';
 
-//$whoops = new \Whoops\Run;
-//$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
-//$whoops->register();
+$whoops = new \Whoops\Run;
+$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+$whoops->register();
 
 // get routes from extern file
 $routeSource = require_once __DIR__ . "/../src/App/Routes/routes.php";
