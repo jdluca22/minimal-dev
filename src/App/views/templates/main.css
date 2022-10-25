@@ -1,0 +1,78 @@
+body {
+    /*background-color: greenyellow; !important;*/
+}
+
+span.tabulator {
+    display: inline-block;
+    width: 12px;
+}
+
+span.wide-tabulator {
+    display: inline-block;
+    width: 125px;
+}
+
+.temp-bg {
+    background-color: rgba(165, 40, 52, 0.2)
+}
+
+.temp-height {
+    min-height: 500px;
+}
+
+/*   ### Login Form ###   */
+.login form.login-form label {
+    display: inline-block;
+    width: 100px;
+}
+
+.login form.login-form input[type="text"],
+.login form.login-form input[type="password"] {
+    width: 200px;
+}
+
+.login div.submit {
+    text-align: right;
+}
+
+.login form.signup-form {
+    font-size: .9rem;
+}
+
+/*   ### Registration Form ###   */
+.create-user form.user-creation label {
+    display: inline-block;
+    width: 100px;
+}
+
+.create-user form.user-creation input[type="text"],
+.create-user form.user-creation input[type="password"] {
+    width: 200px;
+}
+
+.create-user div.submit {
+    text-align: right;
+}
+
+.create-user .link-login-form {
+    font-size: .8rem;
+}
+
+/*   ### Update Forms ###   */
+.update-form label {
+    display: inline-block;
+    width: 150px;
+}
+
+.update-form input[type='text'] {
+    width: 200px;
+}
+
+.update-form #title {
+    width: 400px;
+}
+
+.update-form input,
+.update-form textarea {
+    margin-bottom: 10px;
+}

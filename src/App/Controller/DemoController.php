@@ -2,25 +2,44 @@
 
 namespace Controller;
 
-use Service\DatabaseService;
+use Repository\UserRepository;
+use Test\ORM;
 
-class DemoController
+class DemoController extends Controller
 {
-	public function route()
-	{
-		require __DIR__ . '/../views/demo.html';
-	}
+    private UserRepository $userRepo;
 
-    public function getUser($id) {
-        $stmt = DatabaseService::getInstance()->getConnection()->prepare("SELECT * FROM user WHERE id LIKE :id");
-        $stmt->execute(['id' => $id]);
-
-        var_dump($stmt->fetchAll());
+    public function __construct(array $parameters, array $arguments)
+    {
+        $this->userRepo = new UserRepository();
+        parent::__construct($parameters, $arguments);
     }
 
-    public function getUsers() {
-        $stmt = DatabaseService::getInstance()->getConnection()->query("SELECT * FROM user");
+    public function orm(): void
+    {
+        $test = new ORM(3);
 
-        var_dump($stmt->fetchAll());
+        echo "<pre>ORM Object: ";
+        var_dump($test);
+        echo "</pre>";
+    }
+
+    public function readUsers(): void
+    {
+        $data = $this->userRepo->findAllUsers();
+
+        echo "<pre>";
+        var_dump($data);
+        echo "</pre>";
+        echo "<hr>";
+    }
+
+    public function readUserWhereUsernameLike($search): void
+    {
+        $data = $this->userRepo->findUserWhereUsernameLike($search);
+
+        echo "<pre>";
+        var_dump($data);
+        echo "</pre>";
     }
 }

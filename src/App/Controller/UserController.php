@@ -2,241 +2,250 @@
 
 namespace Controller;
 
+use Enum\Message;
+use Enum\User;
+
 use Exception\DuplicateUserException;
 use Exception\InexistentUserException;
 use Exception\InvalidPasswordException;
+use Exception\PasswordException;
 use Exception\UserException;
 use Exception\ShortPasswordException;
+use Handler\PermissionHandler;
 use Repository\UserRepository;
 use Service\DatabaseService;
-use Test\ORM;
-use Twig\Environment;
 use Twig\Error\Error;
-use Twig\Loader\FilesystemLoader;
 
-class UserController
+
+class UserController extends Controller
 {
-	// move query part of controller is seperate file called XYRepository
-	// db call are then methods of said class
+    private UserRepository $userRepo;
+    protected PermissionHandler $permissionHandler;
+    private string $regexPassword = "/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?()&])/";
+    private string $UPDATE_TEMPLATE = 'user/update-user.html.twig';
 
-	private string $regexPassword = "/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?()&])/";
-	private UserRepository $userRepo;
-	private Environment $twig;
+    public function __construct(array $parameters, array $arguments)
+    {
+        $this->userRepo = new UserRepository();
+        parent::__construct($parameters, $arguments);
+    }
 
-	public function __construct(array $parameters, array $arguments)
-	{
-		$this->userRepo = new UserRepository();
-		$twigLoader = new FilesystemLoader(dirname(__DIR__) . '/views/templates/');
+    public function displayProfile(): void
+    {
+        $activeUserId = $this->sessionHandler->getId();
+        $userData = $this->userRepo->getUserById($activeUserId);
 
-//		with cache
-//		$this->twig = new Environment($twigLoader, ['cache' => dirname(__DIR__, 3) . '/cache']);
+        $this->twigHandler->renderTwigTemplate('user/show-user.html.twig',
+            [
+                'user' => $userData,
+                'isForeignProfile' => false,
+            ]);
+    }
 
-//		without cache
-		$this->twig = new Environment($twigLoader, ['cache' => false]);
+    public function displayAllProfiles(string $message = null, $payload = null): void
+    {
+        $permissions = $this->permissionHandler->getPermissions($this->sessionHandler->getId());
+        $showDisabledUsers = false;
+        if (isset($payload) && $payload['statusCb'] === 'true') {
+            $showDisabledUsers = true;
+        }
+        $users = $this->userRepo->getAllUsersToDisplay($showDisabledUsers);
 
-		// function call
-		call_user_func_array(array($this, $parameters['_route']), $arguments);
 
-	}
+        $data = [
+            'users' => $users,
+            'currentUser' => $this->sessionHandler->getUsername(),
+            'permissions' => $permissions,
+            'message' => $message
+        ];
+        if (isset($payload)) {
+            $data['statusCb'] = $payload['statusCb'] === 'true';
+        }
 
-	/**
-	 * used to display one or all users
-	 * one --> display/id
-	 * all --> display/all
-	 * @param $id
-	 * @return void
-	 */
-	public function display($id): void
-	{
-		$data = NULL;
-		if ($id == 'all') {
-			try {
-				$data = $this->userRepo->findAllUsers($id);
-			} catch (UserException $e) {
-				echo $e->getMessage();
-			}
-		} else {
-			try {
-				// check if object exists
-				if (!$this->checkUserExistence($id)) {
-					throw new InexistentUserException();
-				}
-				$data = $this->userRepo->findUserWithID($id);
-			} catch (UserException $e) {
-				echo $e->getMessage();
-			}
-		}
+        $this->twigHandler->renderTwigTemplate('user/show-all-users.html.twig', $data);
+    }
 
-		if (!$data) {
-			return;
-		}
+    public function displayForeignProfile(int $id): void
+    {
+        $userData = $this->userRepo->getUserById($id);
+        $currentUser = $this->sessionHandler->getUsername();
+        $permissions = $this->permissionHandler->getPermissions($this->sessionHandler->getId());
 
-		try {
-			echo $this->twig->render('show-users.html.twig', ['userList' => $data]);
-		} catch (Error $e) {
-			echo $e->getTraceasString();
-		}
+        $this->twigHandler->renderTwigTemplate('user/show-user.html.twig',
+            [
+                'user' => $userData,
+                'currentUser' => $currentUser,
+                'isForeignProfile' => true,
+                'permissions' => $permissions
+            ]);
+    }
 
-	}
+    public function renderSignupForm(string $messsage = null): void
+    {
+        $roles = $this->userRepo->getRoles();
 
-	public function orm(): void
-	{
-		$test = new ORM(3);
+        $this->twigHandler->renderTwigTemplate('user/create-user-form.html.twig',
+            ['message' => $messsage, 'roles' => $roles]);
+    }
 
-		echo "<pre>ORM Object: ";
-		var_dump($test);
-		echo "</pre>";
-	}
+    public function createUser(array $payload): void
+    {
+        $username = $payload['username'];
+        $password = $payload['password'];
+        $age = $payload['age'];
+        $street = $payload['street'];
+        $number = $payload['number'];
+        $zip = $payload['zip'];
+        $city = $payload['city'];
+        $roleId = $payload['role'];
 
-	public function readUsers(): void
-	{
-		$data = $this->userRepo->findAllUsers();
+        try {
+            // check username
+            if ($this->checkOnDuplicatedUsername($username)) {
+                throw new DuplicateUserException();
+            }
 
-		echo "<pre>";
-		var_dump($data);
-		echo "</pre>";
-		echo "<hr>";
-	}
+            // check password
+            if (strlen($password) < 8) {
+                throw new ShortPasswordException();
+            } else if (!preg_match($this->regexPassword, $password)) {
+                throw new InvalidPasswordException();
+            }
 
-	public function readUser(int $id): void
-	{
-		try {
-			// check if object exists
-			if (!$this->checkUserExistence($id)) {
-				throw new InexistentUserException();
-			}
-			$data = $this->userRepo->findUserWithID($id);
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-			echo "<pre>";
-			var_dump($data);
-			echo "</pre>";
-		} catch (UserException $e) {
-			echo $e->getMessage();
-		}
-	}
+            // create user
+            $this->userRepo->createUser($username, $hashedPassword, $age, $street, $number, $zip, $city, $roleId);
 
-	public function createUserForm(): void
-	{
-		require_once __DIR__ . "/../views/create-user-form.html";
-	}
+            // display the new user:
+            $lastId = DatabaseService::getInstance()->getConnection()->lastInsertId();
+            $this->sessionHandler->createSession($lastId, $username);
+            header('Location: home');
 
-	public function createUser(array $payload): void
-	{
-		$username = $payload['username'];
-		$password = $payload['password'];
-		$age = $payload['age'];
-		$street = $payload['street'];
-		$number = $payload['number'];
-		$zip = $payload['zip'];
-		$city = $payload['city'];
+        } catch (UserException|PasswordException $e) {
+            $this->renderSignupForm($e->getMessage());
+        }
+    }
 
-		try {
-			// check username
-			if ($this->checkOnDuplicatedUsername($username)) {
-				throw new DuplicateUserException();
-			}
+    public function renderUpdateForm(array $payload): void
+    {
 
-			// check password
-			if (strlen($password) < 8) {
-				throw new ShortPasswordException();
-			} else if (!preg_match($this->regexPassword, $password)) {
-				throw new InvalidPasswordException();
-			}
+        $currentUser = $this->sessionHandler->getUsername();
+        $isForeignProfile = $this->sessionHandler->getId() !== intval($payload['id']);
+        $permissions = $this->permissionHandler->getPermissions($this->sessionHandler->getId());
 
-			// create user
-			$this->userRepo->createUser($username, $password, $age, $street, $number, $zip, $city);
+        $data =
+            [
+                'user' => $payload,
+                'currentUser' => $currentUser,
+                'isForeignProfile' => $isForeignProfile,
+                'permissions' => $permissions
+            ];
 
-			// display the new user:
-			$lastId = DatabaseService::getInstance()->getConnection()->lastInsertId();
-			header('Location: display/' . $lastId);
+//        echo "<pre>";
+//        var_dump($data);
+//        echo "</pre>";
+//        die();
 
-		} catch (UserException $e) {
-			echo $e->getMessage();
-		}
-	}
+        $this->twigHandler->renderTwigTemplate($this->UPDATE_TEMPLATE,
+            $data);
+    }
 
-	public function updateUser(int $id, string $username, string $password): void
-	{
-		try {
-			// check if object exists
-			if (!$this->checkUserExistence($id)) {
-				throw new InexistentUserException();
-			}
-			// check username
-			if ($this->checkOnDuplicatedUsername($username)) {
-				throw new DuplicateUserException();
-			}
+    public function updateUser(array $payload): void
+    {
+        $isForeignProfile = $this->sessionHandler->getId() !== intval($payload['id']);
+        $id = $payload['id'];
 
-			// check password
-			if (strlen($password) < 8) {
-				throw new ShortPasswordException();
-			} else if (!preg_match($this->regexPassword, $password)) {
-				throw new InvalidPasswordException();
-			}
+        $userFromDb = $this->userRepo->getUserById($id);
 
-			// create user
-			$this->userRepo->updateUser($id, $username, $password);
-//		display changes:
-			$data = $this->userRepo->findUserWithID($id);
+        try {
+            if ($userFromDb->username !== $payload['username']) {
+                if ($this->checkOnDuplicatedUsername($payload['username'])) {
+                    throw new DuplicateUserException();
+                }
+                $this->userRepo->updateAttributeById($id, User::username, $payload['username']);
+            }
 
-			echo "<pre>";
-			var_dump($data);
-			echo "</pre>";
-		} catch (UserException $e) {
-			echo $e->getMessage();
-		}
+            if ($userFromDb->password !== $payload['password']) {
+                if (strlen($payload['password']) < 8) {
+                    throw new ShortPasswordException();
+                } else if (!preg_match($this->regexPassword, $payload['password'])) {
+                    throw new InvalidPasswordException();
+                }
+                $hashedPassword = password_hash($payload['password'], PASSWORD_BCRYPT);
+                $this->userRepo->updateAttributeById($id, User::password, $hashedPassword);
+            }
 
-	}
+            if ($userFromDb->age !== $payload['age']) {
+                $this->userRepo->updateAttributeById($id, User::age, $payload['age']);
+            }
+            if ($userFromDb->street !== $payload['street']) {
+                $this->userRepo->updateAttributeById($id, User::street, $payload['street']);
+            }
+            if ($userFromDb->house_number !== $payload['house_number']) {
+                $this->userRepo->updateAttributeById($id, User::houseNumber, $payload['house_number']);
+            }
+            if ($userFromDb->city !== $payload['city']) {
+                $this->userRepo->updateAttributeById($id, User::city, $payload['city']);
+            }
+            if ($userFromDb->zip_code !== $payload['zip_code']) {
+                $this->userRepo->updateAttributeById($id, User::zip, $payload['zip_code']);
+            }
+            $isForeignProfile ? header('Location: profile/' . $id) : header('Location: profile');
+        } catch
+        (DuplicateUserException $e) {
+            $payload['username'] = $userFromDb->username;
+            $this->twigHandler->renderTwigTemplate($this->UPDATE_TEMPLATE, ['user' => $payload, 'message' => $e->getMessage()]);
 
-	public function deleteUser($id): void
-	{
-		try {
-			if (!$this->checkUserExistence($id)) {
-				throw new InexistentUserException();
-			}
-			$this->userRepo->deleteUser($id);
-			echo "The user with the id {$id} has been deleted";
-		} catch (UserException $e) {
-			echo $e->getMessage();
-		}
-	}
+        } catch (PasswordException $e) {
+            $payload['password'] = $userFromDb->password;
+            $this->twigHandler->renderTwigTemplate($this->UPDATE_TEMPLATE, ['user' => $payload, 'message' => $e->getMessage()]);
+        }
+    }
 
-	public function readUserWhereUsernameLike($search): void
-	{
-		$data = $this->userRepo->findUserWhereUsernameLike($search);
+    public function deleteUser(array $payload): void
+    {
+        $id = $payload['id'];
+        $isForeignProfile = $this->sessionHandler->getId() !== intval($payload['id']);
 
-		echo "<pre>";
-		var_dump($data);
-		echo "</pre>";
-	}
+        try {
+            if (!$this->checkUserExistence($id)) {
+                throw new InexistentUserException();
+            }
+            $this->userRepo->deleteUser($id);
+            if ($isForeignProfile) {
+                $this->displayAllProfiles(Message::DeletedForeign->value);
+            } else {
+                $this->twigHandler->renderTwigTemplate('login.html.twig', ['message' => Message::Deleted->value]);
+            }
+        } catch (UserException $e) {
+            echo $e->getMessage();
+        }
+    }
 
-	/**
-	 * @param String $username
-	 * @return bool true if the username from the URL matches with an existing one
-	 **/
-	private function checkOnDuplicatedUsername(string $username): bool
-	{
-		$dataUsers = $this->userRepo->findAllUsers();
+    /**
+     * @param String $username
+     * @return bool true if the username from the URL matches with an existing one
+     **/
+    private function checkOnDuplicatedUsername(string $username): bool
+    {
+        $dataUsers = $this->userRepo->findAllUsers();
 
-		foreach ($dataUsers as $user) {
-			if ($username == $user->username) {
-				return true;
-			}
-		}
-		return false;
-	}
+        foreach ($dataUsers as $user) {
+            if ($username == $user->username) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-	/**
-	 * @param int $id
-	 * @return bool true if the user does exist
-	 */
-	private function checkUserExistence(int $id): bool
-	{
-		$objectToEdit = $this->userRepo->findUserWithID($id);
-
-		if (count($objectToEdit) === 0) {
-			return false;
-		}
-		return true;
-	}
+    /**
+     * @param int $id
+     * @return bool true if the user does exist
+     */
+    private function checkUserExistence(int $id): bool
+    {
+        $objectToEdit = $this->userRepo->getUserById($id);
+        return $objectToEdit !== null;
+    }
 }

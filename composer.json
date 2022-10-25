@@ -14,8 +14,10 @@
             "Retro\\Inheritance\\": "src/Retro/Inheritance",
             "Retro\\Serialization\\": "src/Retro/Serialization",
             "Entity\\": "src/App/Entity",
-            "Exception\\": "src/App/Exception",
-            "Repository\\": "src/App/Repository"
+            "Repository\\": "src/App/Repository",
+            "Handler\\": "src/App/Handler",
+            "Enum\\": "src/App/Enum",
+            "Exception\\": "src/App/Exception"
         }
     },
     "authors": [

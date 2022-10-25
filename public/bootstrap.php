@@ -9,16 +9,17 @@ $isDevMode = true;
 $proxyDir = null;
 $cache = null;
 $useSimpleAnnotationReader = false;
-$config = Setup::createAnnotationMetadataConfiguration(array(__DIR__ . "../src"), $isDevMode, $proxyDir, $cache, $useSimpleAnnotationReader);
+$config = Setup::createAnnotationMetadataConfiguration(array(dirname(__DIR__) . "/src"), $isDevMode, $proxyDir, $cache, $useSimpleAnnotationReader);
+
 // or if you prefer yaml or XML
 // $config = Setup::createXMLMetadataConfiguration(array(__DIR__."/config/xml"), $isDevMode);
 // $config = Setup::createYAMLMetadataConfiguration(array(__DIR__."/config/yaml"), $isDevMode);
 
 // database configuration parameters
 $connectionParams = [
-	'dbname' => 'doctrine',
-	'user' => 'root',
-	'password' => 'root',
+	'dbname' => $_ENV['MARIADB_DATABASE'],
+	'user' => $_ENV['MARIADB_USER'],
+	'password' => $_ENV['MARIADB_PASSWORD'],
 	'host' => 'mariadb',
 	'driver' => 'pdo_mysql',
 ];
@@ -26,19 +27,4 @@ $conn = \Doctrine\DBAL\DriverManager::getConnection($connectionParams);
 
 
 // obtaining the entity manager
-$em = EntityManager::create($conn, $config);
-
-
-// create
-$p1 = new Product();
-$em->persist($p1);
-
-// find
-echo Product::class;
-$productRepo = $em->getRepository(Product::class);
-dump($productRepo);
-echo "\n\n" . get_class($productRepo);
-//$products = $productRepo->findAll();
-
-
-dump($em);
+return EntityManager::create($conn, $config);

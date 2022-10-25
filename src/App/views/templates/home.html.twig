@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Home</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <style>{{ source('main.css') }}</style>
+</head>
+<body>
+
+{{ include('partial_view/_navbar.html.twig', {username: username}) }}
+
+<div class="container">
+    <div class="row mt-5 temp-height">
+        <div class="col p-5 temp-bg">
+
+            <p class="h5"><i class="fa-solid fa-user"></i><span class="tabulator"></span>User</p>
+            <ul>
+                <li><a href="/profile" class="text-reset">Visit Profile</a></li>
+                <li><a href="/logout" class="text-reset">Logout</a></li>
+            </ul>
+
+            {% if permissions.r_other_users %}
+                <p class="h5 pt-3"><i class="fa-solid fa-users"></i><span class="tabulator"></span>Manage Users</p>
+                <ul>
+                    <li><a href="/overview" class="text-reset">Visit Profile Overview</a></li>
+                </ul>
+            {% endif %}
+
+            {% if permissions.r_show %}
+                <p class="h5 pt-3"><i class="fa-solid fa-clapperboard"></i><span class="tabulator"></span>Manage Shows</p>
+                <ul>
+                    <li><a href="/movies" class="text-reset">Visit Movie Overview</a></li>
+                    <li><a href="" class="text-reset">Visit TV Series Overview</a></li>
+                </ul>
+            {% endif %}
+
+        </div>
+    </div>
+
+
+</div>
+
+{{ include('partial_view/_footer.html.twig') }}
+
+
+<script src="https://kit.fontawesome.com/a41dcf7e67.js" crossorigin="anonymous"></script>
+<div>
+
+</div>
+</body>
+</html>

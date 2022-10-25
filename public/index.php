@@ -1,17 +1,20 @@
 <?php
 
-use Controller\BlogController;
-use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
+use Whoops\Handler\PrettyPageHandler;
+use Whoops\Run;
 
 require '../vendor/autoload.php';
 
-$whoops = new \Whoops\Run;
-$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+$whoops = new Run;
+$whoops->pushHandler(new PrettyPageHandler);
 $whoops->register();
+
+ini_set( 'session.cookie_httponly', 1 );
+session_start();
 
 // get routes from extern file
 $routeSource = require_once __DIR__ . "/../src/App/Routes/routes.php";
